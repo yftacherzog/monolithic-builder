@@ -27,6 +27,9 @@ go.work.sum
 # env file
 .env
 
+# Local build artifacts
+monolithic-builder
+
 # Editor/IDE
 # .idea/
 # .vscode/
