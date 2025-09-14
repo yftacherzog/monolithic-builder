@@ -1,6 +1,7 @@
 package buildcontainer
 
 import (
+	"encoding/json"
 	"os"
 	"strconv"
 	"strings"
@@ -47,6 +48,11 @@ type Config struct {
 
 // LoadConfigFromEnv loads configuration from environment variables
 func LoadConfigFromEnv() (*Config, error) {
+	return LoadConfig(nil)
+}
+
+// LoadConfig loads configuration from environment variables and optional build args
+func LoadConfig(buildArgs []string) (*Config, error) {
 	config := &Config{
 		// Git defaults
 		GitURL:        getEnv("GIT_URL", ""),
@@ -72,7 +78,7 @@ func LoadConfigFromEnv() (*Config, error) {
 		Cachi2ConfigFileContent: getEnv("CONFIG_FILE_CONTENT", ""),
 
 		// Build defaults
-		BuildArgs:     getEnvArray("BUILD_ARGS"),
+		BuildArgs:     buildArgs,
 		BuildArgsFile: getEnv("BUILD_ARGS_FILE", ""),
 		CommitSHA:     getEnv("COMMIT_SHA", ""),
 
@@ -117,7 +123,29 @@ func getEnvInt(key string, defaultValue int) int {
 
 func getEnvArray(key string) []string {
 	if value := os.Getenv(key); value != "" {
-		return strings.Split(value, ",")
+		// Handle both space-separated (from Tekton array expansion) and comma-separated values
+		if strings.Contains(value, ",") {
+			return strings.Split(value, ",")
+		}
+		// Split on spaces and filter out empty strings
+		parts := strings.Fields(value)
+		return parts
+	}
+	return []string{}
+}
+
+func getEnvArrayJSON(key string) []string {
+	if value := os.Getenv(key); value != "" {
+		// Handle JSON array format from Tekton array parameters
+		if strings.HasPrefix(value, "[") && strings.HasSuffix(value, "]") {
+			// Parse as JSON array
+			var arr []string
+			if err := json.Unmarshal([]byte(value), &arr); err == nil {
+				return arr
+			}
+		}
+		// Fallback to space-separated parsing
+		return getEnvArray(key)
 	}
 	return []string{}
 }
