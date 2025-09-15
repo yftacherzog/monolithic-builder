@@ -1,10 +1,8 @@
 package buildcontainer
 
 import (
-	"encoding/json"
 	"os"
 	"strconv"
-	"strings"
 )
 
 // Config holds all configuration parameters for the monolithic build-container task
@@ -119,33 +117,4 @@ func getEnvInt(key string, defaultValue int) int {
 		}
 	}
 	return defaultValue
-}
-
-func getEnvArray(key string) []string {
-	if value := os.Getenv(key); value != "" {
-		// Handle both space-separated (from Tekton array expansion) and comma-separated values
-		if strings.Contains(value, ",") {
-			return strings.Split(value, ",")
-		}
-		// Split on spaces and filter out empty strings
-		parts := strings.Fields(value)
-		return parts
-	}
-	return []string{}
-}
-
-func getEnvArrayJSON(key string) []string {
-	if value := os.Getenv(key); value != "" {
-		// Handle JSON array format from Tekton array parameters
-		if strings.HasPrefix(value, "[") && strings.HasSuffix(value, "]") {
-			// Parse as JSON array
-			var arr []string
-			if err := json.Unmarshal([]byte(value), &arr); err == nil {
-				return arr
-			}
-		}
-		// Fallback to space-separated parsing
-		return getEnvArray(key)
-	}
-	return []string{}
 }

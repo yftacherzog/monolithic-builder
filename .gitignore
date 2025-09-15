@@ -16,6 +16,7 @@
 coverage.*
 *.coverprofile
 profile.cov
+test-results.json
 
 # Dependency directories (remove the comment below to include it)
 # vendor/
@@ -28,7 +29,7 @@ go.work.sum
 .env
 
 # Local build artifacts
-monolithic-builder
+/monolithic-builder
 
 # Editor/IDE
 # .idea/

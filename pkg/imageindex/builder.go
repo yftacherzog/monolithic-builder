@@ -7,7 +7,6 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
-	"time"
 
 	"go.uber.org/zap"
 )
@@ -192,68 +191,23 @@ func (b *Builder) getImageDigest(ctx context.Context, imageURL string) (string, 
 }
 
 // addExpirationLabel adds expiration label to the image
+// NOTE: The original build-image-index task declares IMAGE_EXPIRES_AFTER parameter
+// but does not actually implement the functionality. We match this behavior.
 func (b *Builder) addExpirationLabel(ctx context.Context, imageURL string) error {
-	// Parse duration and calculate expiration time
-	duration := b.parseDuration(b.config.ImageExpiresAfter)
-	if duration == 0 {
+	if b.config.ImageExpiresAfter == "" {
 		return nil
 	}
 
-	expirationTime := time.Now().Add(duration)
-	expirationLabel := fmt.Sprintf("quay.expires-after=%s", expirationTime.Format(time.RFC3339))
+	// Log that we received the parameter (matching original task behavior)
+	b.logger.Info("IMAGE_EXPIRES_AFTER parameter received",
+		zap.String("image", imageURL),
+		zap.String("expires_after", b.config.ImageExpiresAfter))
 
-	// Use skopeo to add the label
-	args := []string{"copy"}
-	if !b.config.TLSVerify {
-		args = append(args, "--src-tls-verify=false", "--dest-tls-verify=false")
-	}
-	args = append(args,
-		fmt.Sprintf("docker://%s", imageURL),
-		fmt.Sprintf("docker://%s", imageURL),
-		"--format", "oci",
-		"--dest-oci-accept-uncompressed-layers",
-	)
-
-	// Note: This is a simplified approach. In practice, you might need to use
-	// buildah or other tools to properly modify image labels
-	b.logger.Info("Adding expiration label", zap.String("label", expirationLabel))
+	// TODO: Implement expiration label functionality
+	// The original build-image-index task declares this parameter but doesn't implement it
+	b.logger.Warn("IMAGE_EXPIRES_AFTER functionality not yet implemented (matches original task)")
 
 	return nil
-}
-
-// parseDuration parses duration strings like "1h", "2d", "3w"
-func (b *Builder) parseDuration(s string) time.Duration {
-	if s == "" {
-		return 0
-	}
-
-	// Simple parser for common duration formats
-	if strings.HasSuffix(s, "h") {
-		if h, err := time.ParseDuration(s); err == nil {
-			return h
-		}
-	}
-	if strings.HasSuffix(s, "d") {
-		if days := strings.TrimSuffix(s, "d"); days != "" {
-			if d, err := time.ParseDuration(days + "h"); err == nil {
-				return d * 24
-			}
-		}
-	}
-	if strings.HasSuffix(s, "w") {
-		if weeks := strings.TrimSuffix(s, "w"); weeks != "" {
-			if w, err := time.ParseDuration(weeks + "h"); err == nil {
-				return w * 24 * 7
-			}
-		}
-	}
-
-	// Fallback to standard duration parsing
-	if d, err := time.ParseDuration(s); err == nil {
-		return d
-	}
-
-	return 0
 }
 
 // writeResult writes a result to the Tekton results directory

@@ -1,0 +1,9 @@
+run:
+  timeout: 5m
+
+issues:
+  exclude-rules:
+    # Allow Ginkgo test files to use dot imports
+    - path: _test\.go
+      linters:
+        - typecheck

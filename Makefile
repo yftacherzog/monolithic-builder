@@ -24,15 +24,27 @@ build: ## Build the unified monolithic-builder binary
 
 .PHONY: test
 test: ## Run tests
-	go test -v ./...
+	go test -v -race ./...
+
+.PHONY: test-ginkgo
+test-ginkgo: ## Run tests with Ginkgo
+	ginkgo run -r --randomize-all --randomize-suites --fail-on-pending --race --trace --json-report=test-results.json
+
+.PHONY: test-coverage
+test-coverage: ## Run tests with coverage
+	go test -v -race -coverprofile=coverage.out ./...
+	go tool cover -html=coverage.out -o coverage.html
+
+.PHONY: test-all
+test-all: test test-ginkgo test-coverage ## Run all test suites
 
 .PHONY: lint
 lint: ## Run linter
-	golangci-lint run
+	golangci-lint run --timeout=5m
 
 .PHONY: clean
 clean: ## Clean build artifacts
-	rm -f monolithic-builder
+	rm -f monolithic-builder *.out *.html test-results.json
 
 .PHONY: docker-build
 docker-build: ## Build the unified container image
@@ -59,7 +71,7 @@ vet: ## Run go vet
 	go vet ./...
 
 .PHONY: check
-check: fmt vet lint test ## Run all checks
+check: fmt vet lint test-all ## Run all checks
 
 .PHONY: all
 all: clean mod-tidy check build docker-build ## Build everything

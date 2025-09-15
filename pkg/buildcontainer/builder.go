@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/konflux-ci/monolithic-builder/pkg/exec"
 	"github.com/konflux-ci/monolithic-builder/pkg/git"
 	"github.com/konflux-ci/monolithic-builder/pkg/image"
 	"github.com/konflux-ci/monolithic-builder/pkg/prefetch"
@@ -16,13 +17,15 @@ import (
 type Builder struct {
 	logger *zap.Logger
 	config *Config
+	runner exec.CommandRunner
 }
 
 // NewBuilder creates a new Builder instance
-func NewBuilder(logger *zap.Logger, config *Config) *Builder {
+func NewBuilder(logger *zap.Logger, config *Config, runner exec.CommandRunner) *Builder {
 	return &Builder{
 		logger: logger,
 		config: config,
+		runner: runner,
 	}
 }
 
@@ -107,7 +110,7 @@ func (b *Builder) initializeAndCheckBuild(ctx context.Context) (bool, error) {
 	}
 
 	// Check if image already exists
-	exists, err := image.CheckImageExists(ctx, b.config.ImageURL, b.config.TLSVerify)
+	exists, err := image.CheckImageExists(ctx, b.config.ImageURL, b.config.TLSVerify, b.runner)
 	if err != nil {
 		b.logger.Warn("Failed to check image existence, proceeding with build", zap.Error(err))
 		return true, nil
@@ -163,7 +166,7 @@ func (b *Builder) buildContainerImage(ctx context.Context, commitSHA string) (*i
 		TLSVerify:         b.config.TLSVerify,
 	}
 
-	return image.BuildAndPush(ctx, b.logger, buildConfig)
+	return image.BuildAndPush(ctx, b.logger, buildConfig, b.runner)
 }
 
 // writeResult writes a result to the Tekton results directory
