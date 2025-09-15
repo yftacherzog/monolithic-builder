@@ -3,7 +3,6 @@ package buildcontainer
 import (
 	"os"
 	"strconv"
-	"strings"
 )
 
 // Config holds all configuration parameters for the monolithic build-container task
@@ -47,6 +46,11 @@ type Config struct {
 
 // LoadConfigFromEnv loads configuration from environment variables
 func LoadConfigFromEnv() (*Config, error) {
+	return LoadConfig(nil)
+}
+
+// LoadConfig loads configuration from environment variables and optional build args
+func LoadConfig(buildArgs []string) (*Config, error) {
 	config := &Config{
 		// Git defaults
 		GitURL:        getEnv("GIT_URL", ""),
@@ -72,7 +76,7 @@ func LoadConfigFromEnv() (*Config, error) {
 		Cachi2ConfigFileContent: getEnv("CONFIG_FILE_CONTENT", ""),
 
 		// Build defaults
-		BuildArgs:     getEnvArray("BUILD_ARGS"),
+		BuildArgs:     buildArgs,
 		BuildArgsFile: getEnv("BUILD_ARGS_FILE", ""),
 		CommitSHA:     getEnv("COMMIT_SHA", ""),
 
@@ -113,11 +117,4 @@ func getEnvInt(key string, defaultValue int) int {
 		}
 	}
 	return defaultValue
-}
-
-func getEnvArray(key string) []string {
-	if value := os.Getenv(key); value != "" {
-		return strings.Split(value, ",")
-	}
-	return []string{}
 }

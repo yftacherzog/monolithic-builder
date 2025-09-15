@@ -31,10 +31,6 @@ RUN dnf update -y && \
 # Copy unified binary
 COPY --from=builder /opt/app-root/monolithic-builder /usr/local/bin/monolithic-builder
 
-# Create symlinks for backward compatibility
-RUN ln -s /usr/local/bin/monolithic-builder /usr/local/bin/build-container && \
-    ln -s /usr/local/bin/monolithic-builder /usr/local/bin/build-image-index
-
 # Set up buildah storage and configuration
 RUN mkdir -p /var/lib/containers /workspace /tekton/results /.docker && \
     chmod 755 /var/lib/containers /.docker && \
