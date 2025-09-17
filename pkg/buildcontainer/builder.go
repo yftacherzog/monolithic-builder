@@ -47,24 +47,44 @@ func (b *Builder) Execute(ctx context.Context) error {
 		return fmt.Errorf("failed to write build result: %w", err)
 	}
 
-	if !shouldBuild {
-		b.logger.Info("Skipping build - image already exists and rebuild not requested")
-		return nil
-	}
-
-	// Step 2: Clone repository
+	// Step 2: Always clone repository to get git info (required for pipeline results)
 	b.logger.Info("Cloning repository")
 	gitResult, err := b.cloneRepository(ctx)
 	if err != nil {
 		return fmt.Errorf("git clone failed: %w", err)
 	}
 
-	// Write git results
+	// Write git results (always required for Konflux pipeline traceability)
 	if err := b.writeResult("commit", gitResult.CommitSHA); err != nil {
 		return fmt.Errorf("failed to write commit result: %w", err)
 	}
 	if err := b.writeResult("url", gitResult.URL); err != nil {
 		return fmt.Errorf("failed to write url result: %w", err)
+	}
+
+	// Always write image results (required for downstream tasks like build-image-index)
+	if err := b.writeResult("IMAGE_URL", b.config.ImageURL); err != nil {
+		return fmt.Errorf("failed to write IMAGE_URL result: %w", err)
+	}
+
+	if !shouldBuild {
+		b.logger.Info("Skipping build - image already exists and rebuild not requested")
+
+		// Get digest of existing image for downstream tasks
+		digest, err := b.getExistingImageDigest(ctx)
+		if err != nil {
+			b.logger.Warn("Failed to get existing image digest, using empty value", zap.Error(err))
+			digest = ""
+		}
+
+		if err := b.writeResult("IMAGE_DIGEST", digest); err != nil {
+			return fmt.Errorf("failed to write IMAGE_DIGEST result: %w", err)
+		}
+
+		b.logger.Info("Skipped build completed - wrote IMAGE_URL and IMAGE_DIGEST results",
+			zap.String("image_url", b.config.ImageURL),
+			zap.String("image_digest", digest))
+		return nil
 	}
 
 	// Step 3: Prefetch dependencies (if configured)
@@ -82,10 +102,7 @@ func (b *Builder) Execute(ctx context.Context) error {
 		return fmt.Errorf("container build failed: %w", err)
 	}
 
-	// Write build results
-	if err := b.writeResult("IMAGE_URL", buildResult.ImageURL); err != nil {
-		return fmt.Errorf("failed to write IMAGE_URL result: %w", err)
-	}
+	// Write build results (IMAGE_URL already written above)
 	if err := b.writeResult("IMAGE_DIGEST", buildResult.ImageDigest); err != nil {
 		return fmt.Errorf("failed to write IMAGE_DIGEST result: %w", err)
 	}
@@ -173,4 +190,9 @@ func (b *Builder) buildContainerImage(ctx context.Context, commitSHA string) (*i
 func (b *Builder) writeResult(name, value string) error {
 	resultPath := filepath.Join(b.config.ResultsPath, name)
 	return os.WriteFile(resultPath, []byte(value), 0644)
+}
+
+// getExistingImageDigest retrieves the digest of an existing image from the registry
+func (b *Builder) getExistingImageDigest(ctx context.Context) (string, error) {
+	return image.GetImageDigest(ctx, b.config.ImageURL, b.config.TLSVerify, b.runner)
 }

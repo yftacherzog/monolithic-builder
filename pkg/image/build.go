@@ -101,3 +101,26 @@ func CheckImageExists(ctx context.Context, imageURL string, tlsVerify bool, runn
 	err := runner.Run(ctx, "skopeo", args...)
 	return err == nil, nil
 }
+
+// GetImageDigest retrieves the digest of an existing image from the registry
+func GetImageDigest(ctx context.Context, imageURL string, tlsVerify bool, runner exec.CommandRunner) (string, error) {
+	args := SkopeoInspectCommand(imageURL, tlsVerify)
+
+	output, err := runner.RunWithOutput(ctx, "skopeo", args...)
+	if err != nil {
+		return "", fmt.Errorf("failed to inspect image %s: %w", imageURL, err)
+	}
+
+	// Parse the JSON output to extract the digest
+	var manifest map[string]interface{}
+	if err := json.Unmarshal([]byte(output), &manifest); err != nil {
+		return "", fmt.Errorf("failed to parse skopeo output: %w", err)
+	}
+
+	digest, ok := manifest["Digest"].(string)
+	if !ok || digest == "" {
+		return "", fmt.Errorf("digest not found in skopeo output")
+	}
+
+	return digest, nil
+}
