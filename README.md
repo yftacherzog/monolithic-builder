@@ -59,7 +59,7 @@ make test-all
 ## Working Examples
 
 For complete working examples of the PipelineRun and Task definitions, see:
-[testrepo commit d8201e7](https://github.com/yftacherzog/testrepo/commit/d8201e7f220df3f57d77dc3e680e45eb623debd8)
+[testrepo commit d8201e7](https://github.com/yftacherzog/testrepo/commit/48e3f1ddf6f509045a2b821de0cd1288a51fc6c3)
 
 This commit includes:
 - `.tekton/testrepo-monolithic-test.yaml` - Complete PipelineRun example
